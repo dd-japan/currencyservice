@@ -60,3 +60,27 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+    - name: Checkout Kubernetes manifests repo
+      uses: actions/checkout@v3
+      with:
+        repository: dd-japan/currencyservice-manifest
+        token: ${{ secrets.GH_TOKEN }}
+        path: currencyservice-manifest
+
+    - name: List files for debugging
+      run: ls -R currencyservice-manifest
+
+    - name: Update Deployment manifests
+      run: |
+          sed -i 's|image: public.ecr.aws/b1o7r7e0/currencyservice:[^[:space:]]*|image: public.ecr.aws/b1o7r7e0/currencyservice:${{ github.sha }}|g' currencyservice-manifest/manifest/currencyservice.yaml
+          cat currencyservice-manifest/manifest/currencyservice.yaml
+
+    - name: Commit and push changes
+      working-directory: currencyservice-manifest
+      run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add manifest/currencyservice.yaml
+          git status
+          git commit -m "Update image to public.ecr.aws/b1o7r7e0/currencyservice:${{ env.IMAGE_TAG }}"
+          git push origin main
